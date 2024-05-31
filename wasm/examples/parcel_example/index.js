@@ -100,8 +100,8 @@ async function retrieveRiveContents({ rive, num }) {
 }
 
 async function main() {
-  const render_size = 250;
-  const render_columns = 5;
+  const render_size = 300;
+  const render_columns = 8;
 
   // Determine how many Rives to load and draw onto the singular canvas
   const params = new Proxy(new URLSearchParams(window.location.search), {
@@ -134,10 +134,7 @@ async function main() {
   // await checkForLeaks(rive);
 
   // Track the artboard, animation/state machine of each Rive file we load in
-  let instances = [];
-  for (let i = 0; i < numRivesToRender; i++) {
-    instances.push(await retrieveRiveContents({ rive, num: i }));
-  }
+  const instance = await retrieveRiveContents({ rive, num: 0 });
 
   let lastTime = 0;
   function draw(time) {
@@ -152,23 +149,22 @@ async function main() {
     let trackX = 0;
     let trackY = 0;
 
+    let { artboard, stateMachine, animation } = instance;
+    if (stateMachine) {
+      stateMachine.advance(elapsedSeconds);
+    }
+    if (animation) {
+      animation.advance(elapsedSeconds);
+      animation.apply(1);
+    }
+    artboard.advance(elapsedSeconds);
+
     // For each Rive we loaded, advance the animation/state machine and artboard by elapsed
     // time since last frame draw and render the Artboard to a piece of the canvas using
     // the Renderer's align method
     for (let i = 0; i < numRivesToRender; i++) {
-      let { artboard, stateMachine, animation } = instances[i];
       if (artboard) {
-        if (stateMachine) {
-          stateMachine.advance(elapsedSeconds);
-        }
-        if (animation) {
-          animation.advance(elapsedSeconds);
-          animation.apply(1);
-        }
-        artboard.advance(elapsedSeconds);
         renderer.save();
-        // Draw to a 250x250 piece of the canvas and track "position"
-        // in grid to move to the next piece to render the next Rive
         renderer.align(
           rive.Fit.contain,
           rive.Alignment.center,

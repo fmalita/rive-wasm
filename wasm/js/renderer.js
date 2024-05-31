@@ -804,8 +804,11 @@ Module["onRuntimeInitialized"] = function () {
         this._drawList.push(function () {
           ctx['save']();
 
+          // Hack alert: passing the image data directly to drawMesh does not render correctly
+          // (likely an implementation bug related to image decoding or the image decode cache).
+          // Calling drawImage first seems to work around the problem - so we do that once for
+          // each image.
           if (!image._primed) {
-            console.log('priming ' + image);
             ctx["globalAlpha"] = 0;
             ctx['drawImage'](image._image, 0, 0);
             image._primed = true;
