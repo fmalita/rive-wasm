@@ -695,6 +695,11 @@ Module["onRuntimeInitialized"] = function () {
     _pendingCanvasRenderers.clear();
   }
 
+  let _nativeMeshEnabled = false;
+  function enableNativeMeshImpl(enable) {
+    _nativeMeshEnabled = enable;
+  }
+
   /**
    * A renderer exposed to consumers via .makeRenderer() that draws to a supplied canvas with
    * an implicitly created Canvas2D context. All context APIs exposed should go through this
@@ -789,6 +794,33 @@ Module["onRuntimeInitialized"] = function () {
       meshMaxX,
       meshMaxY
     ) {
+      if (_nativeMeshEnabled) {
+        const ctx = this._ctx;
+        const vbuf  = ctx["createMesh2DVertexBuffer"](vtx);
+        const uvbuf = ctx["createMesh2DUVBuffer"](uv);
+        const ibuf  = ctx["createMesh2DIndexBuffer"](indices);
+
+        const canvasBlend = _canvasBlend(blend);
+        this._drawList.push(function () {
+          ctx['save']();
+
+          if (!image._primed) {
+            console.log('priming ' + image);
+            ctx["globalAlpha"] = 0;
+            ctx['drawImage'](image._image, 0, 0);
+            image._primed = true;
+          }
+
+          ctx["globalAlpha"] = opacity;
+          ctx["globalCompositeOperation"] = canvasBlend;
+          ctx["drawMesh"](vbuf, uvbuf, ibuf, image._image);
+
+          ctx['restore']();
+        });
+
+        return;
+      }
+
       const canvasWidth = this._ctx["canvas"]["width"];
       const canvasHeight = this._ctx["canvas"]["height"];
       const meshWidth = meshMaxX - meshMinX;
@@ -1032,6 +1064,7 @@ Module["onRuntimeInitialized"] = function () {
   _animationCallbackHandler.onAfterCallbacks = flushCanvasRenderers;
 
   Module["resolveAnimationFrame"] = flushCanvasRenderers;
+  Module["enableNativeMeshImpl"] = enableNativeMeshImpl;
 
   Module["cleanup"] = function () {
     if (_rectanizer) {

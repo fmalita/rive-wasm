@@ -19,6 +19,7 @@ import RiveCanvas from "../../../js/npm/canvas_advanced_single/canvas_advanced_s
 
 // import {checkForLeaks} from "./checkForLeaks";
 
+import DragonAnimation from "./dragon_v2.riv";
 import AvatarAnimation from "./look.riv";
 import TapeMeshAnimation from "./tape.riv";
 import BirdAnimation from "./birb.riv";
@@ -29,6 +30,11 @@ import TestText from "./text_test_2.riv";
 import "./main.css";
 
 const RIVE_EXAMPLES = {
+  0: {
+    riveFile: DragonAnimation,
+    animation: "idle",
+  },
+  /*
   0: {
     riveFile: BallAnimation,
     hasStateMachine: true,
@@ -61,6 +67,7 @@ const RIVE_EXAMPLES = {
     hasStateMachine: true,
     stateMachine: "State Machine 1",
   },
+  */
 };
 
 // Load in the Rive File, retrieve the default artboard, a named state machine, or a named animation
@@ -93,6 +100,9 @@ async function retrieveRiveContents({ rive, num }) {
 }
 
 async function main() {
+  const render_size = 250;
+  const render_columns = 5;
+
   // Determine how many Rives to load and draw onto the singular canvas
   const params = new Proxy(new URLSearchParams(window.location.search), {
     get: (searchParams, prop) => searchParams.get(prop),
@@ -103,14 +113,22 @@ async function main() {
   // To keep this simple, we'll just render each Rive with an area
   // of 250x250
   let canvas = document.getElementById("rive-canvas");
-  canvas.width = `${4 * 250}`;
-  canvas.height = `${Math.ceil(numRivesToRender / 4) * 250}`;
+  canvas.width = `${render_columns * render_size}`;
+  canvas.height = `${Math.ceil(numRivesToRender / render_columns) * render_size}`;
 
   // Instance Rive and create our Renderer
   // Note: We use the advanced-single build here to simplify having to load in WASM, as
   // this will ensure WASM is bundled in the JS
   const rive = await RiveCanvas();
   const renderer = rive.makeRenderer(canvas, true);
+  rive.enableFPSCounter();
+
+  // Mesh control.
+  const meshSelect = document.getElementById("mesh-select");
+  meshSelect.disabled = !('drawMesh' in CanvasRenderingContext2D.prototype);
+  meshSelect.onchange = () => {
+    rive.enableNativeMeshImpl(meshSelect.value === 'canvas');
+  };
 
   // OPTIONAL FOR DEBUG TESTING: Perform leak checks right after rive is initialized.
   // await checkForLeaks(rive);
@@ -133,7 +151,6 @@ async function main() {
     renderer.clear();
     let trackX = 0;
     let trackY = 0;
-    const colMax = 4;
 
     // For each Rive we loaded, advance the animation/state machine and artboard by elapsed
     // time since last frame draw and render the Artboard to a piece of the canvas using
@@ -158,16 +175,16 @@ async function main() {
           {
             minX: trackX,
             minY: trackY,
-            maxX: trackX + 250,
-            maxY: trackY + 250,
+            maxX: trackX + render_size,
+            maxY: trackY + render_size,
           },
           artboard.bounds
         );
-        if ((i + 1) % colMax === 0) {
+        if ((i + 1) % render_columns === 0) {
           trackX = 0;
-          trackY += 250;
+          trackY += render_size;
         } else {
-          trackX += 250;
+          trackX += render_size;
         }
 
         // Pass along our Renderer to the artboard, so that it can draw onto the canvas
